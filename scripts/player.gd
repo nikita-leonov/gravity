@@ -6,12 +6,18 @@ extends Node2D
 @export var gravity_strength: float = 900.0
 @export var radius: float = 16.0
 @export var max_target_angle: float = 0.7
+@export var aligned_jump_angle: float = 0.35
+@export var aligned_jump_boost: float = 1.6
+@export var jump_assist_duration: float = 0.45
+@export var jump_assist_bias: float = 220.0
 
 var planet_center: Vector2 = Vector2.ZERO
 var planet_radius: float = 0.0
 var velocity: Vector2 = Vector2.ZERO
 var grounded := false
 var gravity_bodies: Array = []
+var jump_assist_target: Vector2 = Vector2.ZERO
+var jump_assist_timer: float = 0.0
 
 func _ready() -> void:
 	_set_visual_size()
@@ -22,6 +28,9 @@ func set_gravity_bodies(bodies: Array) -> void:
 func _physics_process(delta: float) -> void:
 	if gravity_bodies.is_empty():
 		return
+
+	if jump_assist_timer > 0.0:
+		jump_assist_timer = max(jump_assist_timer - delta, 0.0)
 
 	_select_gravity_target()
 	if planet_radius <= 0.0:
@@ -42,8 +51,14 @@ func _physics_process(delta: float) -> void:
 	velocity += direction_to_center * gravity_strength * delta
 
 	if grounded and Input.is_action_just_pressed("ui_accept"):
-		var jump_direction = _get_jump_direction(direction_to_center)
-		velocity += jump_direction * jump_speed
+		var jump_solution = _get_jump_solution(direction_to_center)
+		var jump_direction = jump_solution["direction"] as Vector2
+		var jump_multiplier = 1.0
+		if jump_solution["aligned"]:
+			jump_multiplier = aligned_jump_boost
+			jump_assist_target = jump_solution["target_center"] as Vector2
+			jump_assist_timer = jump_assist_duration
+		velocity += jump_direction * jump_speed * jump_multiplier
 		grounded = false
 
 	global_position += velocity * delta
@@ -61,6 +76,11 @@ func _select_gravity_target() -> void:
 		var center = body["center"]
 		var body_radius = body["radius"]
 		var distance = (global_position - center).length() - (body_radius + radius)
+		if jump_assist_timer > 0.0 and center == jump_assist_target:
+			var bias_scale = 0.0
+			if jump_assist_duration > 0.0:
+				bias_scale = jump_assist_timer / jump_assist_duration
+			distance -= jump_assist_bias * bias_scale
 		if distance < best_distance:
 			best_distance = distance
 			best_center = center
@@ -69,14 +89,18 @@ func _select_gravity_target() -> void:
 	planet_center = best_center
 	planet_radius = best_radius
 
-func _get_jump_direction(direction_to_center: Vector2) -> Vector2:
+func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	var jump_direction = -direction_to_center
 	var best_dot = cos(max_target_angle)
+	var target_center = Vector2.ZERO
+	var has_target = false
 
 	for body in gravity_bodies:
 		if not body.has("center") or not body.has("radius"):
 			continue
 		var center = body["center"]
+		if center == planet_center:
+			continue
 		var to_body = (center - global_position)
 		if to_body.length() <= 0.0:
 			continue
@@ -85,8 +109,21 @@ func _get_jump_direction(direction_to_center: Vector2) -> Vector2:
 		if alignment > best_dot:
 			best_dot = alignment
 			jump_direction = candidate_direction
+			target_center = center
+			has_target = true
 
-	return jump_direction
+	var aligned = false
+	if has_target:
+		var from_planet = (global_position - planet_center).normalized()
+		var from_satellite = (global_position - target_center).normalized()
+		var alignment_score = from_planet.dot(from_satellite)
+		aligned = alignment_score >= cos(aligned_jump_angle)
+
+	return {
+		"direction": jump_direction,
+		"aligned": aligned,
+		"target_center": target_center
+	}
 
 func _apply_surface_constraints() -> void:
 	var desired_radius = planet_radius + radius
