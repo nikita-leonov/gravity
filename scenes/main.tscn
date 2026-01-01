@@ -9,6 +9,8 @@
 
 [node name="Planet" parent="." instance=ExtResource("1_hmp8p")]
 
+[node name="Satellites" type="Node2D" parent="."]
+
 [node name="Obstacles" type="Node2D" parent="."]
 
 [node name="Player" parent="." instance=ExtResource("2_5m64q")]

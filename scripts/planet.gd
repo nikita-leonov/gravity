@@ -17,3 +17,9 @@ func _draw() -> void:
 	if radius <= 0.0:
 		return
 	draw_circle(center, radius, color)
+
+func get_body_data() -> Dictionary:
+	return {
+		"center": center,
+		"radius": radius
+	}

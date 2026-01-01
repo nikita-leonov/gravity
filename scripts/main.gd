@@ -4,12 +4,19 @@ extends Node2D
 @export var planet_radius_scale: float = 0.9
 @export var obstacle_count: int = 6
 @export var obstacle_size_range: Vector2 = Vector2(18.0, 34.0)
+@export var satellite_count: int = 3
+@export var satellite_orbit_offset: float = 140.0
+@export var satellite_orbit_gap: float = 90.0
+@export var satellite_radius_range: Vector2 = Vector2(26.0, 46.0)
+@export var satellite_orbit_speed_range: Vector2 = Vector2(0.25, 0.85)
 
 @onready var planet = $Planet
 @onready var player = $Player
 @onready var obstacles = $Obstacles
+@onready var satellites = $Satellites
 
 var obstacle_scene := preload("res://scenes/obstacle.tscn")
+var satellite_scene := preload("res://scenes/satellite.tscn")
 
 func _ready() -> void:
 	_update_layout()
@@ -17,6 +24,18 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_SIZE_CHANGED:
 		_update_layout()
+
+func _physics_process(_delta: float) -> void:
+	if player == null:
+		return
+	var bodies: Array = []
+	if planet != null and planet.has_method("get_body_data"):
+		bodies.append(planet.call("get_body_data"))
+	if satellites != null:
+		for child in satellites.get_children():
+			if child.has_method("get_body_data"):
+				bodies.append(child.call("get_body_data"))
+	player.set_gravity_bodies(bodies)
 
 func _update_layout() -> void:
 	var viewport_size = get_viewport_rect().size
@@ -28,8 +47,7 @@ func _update_layout() -> void:
 	var center = Vector2(viewport_size.x * 0.5, viewport_size.y - surface_height + radius)
 
 	planet.set_planet(center, radius)
-	player.planet_center = center
-	player.planet_radius = radius
+	_spawn_satellites(center, radius)
 	_spawn_obstacles(center, radius)
 
 	var spawn_direction = Vector2(0.0, -1.0)
@@ -60,3 +78,33 @@ func _spawn_obstacles(center: Vector2, radius: float) -> void:
 		var direction = Vector2.RIGHT.rotated(angle)
 		obstacle.global_position = center + direction * (radius + size * 0.5)
 		obstacle.rotation = direction.angle() + PI * 0.5
+
+func _spawn_satellites(center: Vector2, radius: float) -> void:
+	if satellites == null:
+		return
+
+	for child in satellites.get_children():
+		child.queue_free()
+
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	var count = max(satellite_count, 0)
+	var min_size = min(satellite_radius_range.x, satellite_radius_range.y)
+	var max_size = max(satellite_radius_range.x, satellite_radius_range.y)
+	var min_speed = min(satellite_orbit_speed_range.x, satellite_orbit_speed_range.y)
+	var max_speed = max(satellite_orbit_speed_range.x, satellite_orbit_speed_range.y)
+
+	for i in range(count):
+		var satellite = satellite_scene.instantiate()
+		satellites.add_child(satellite)
+
+		var orbit_radius = radius + satellite_orbit_offset + float(i) * satellite_orbit_gap
+		var size = rng.randf_range(min_size, max_size)
+		var angle = rng.randf_range(0.0, TAU)
+		var speed = rng.randf_range(min_speed, max_speed)
+		if rng.randf() < 0.5:
+			speed = -speed
+		var is_primary = i == 0
+
+		if satellite.has_method("setup"):
+			satellite.call("setup", center, orbit_radius, angle, speed, size, is_primary)
