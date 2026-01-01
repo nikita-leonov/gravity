@@ -6,12 +6,12 @@ extends Node2D
 var center: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
-	update()
+	queue_redraw()
 
 func set_planet(center_position: Vector2, planet_radius: float) -> void:
 	center = center_position
 	radius = planet_radius
-	update()
+	queue_redraw()
 
 func _draw() -> void:
 	if radius <= 0.0:
