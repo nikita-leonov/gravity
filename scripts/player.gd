@@ -18,6 +18,7 @@ var grounded := false
 var gravity_bodies: Array = []
 var jump_assist_target: Vector2 = Vector2.ZERO
 var jump_assist_timer: float = 0.0
+var gravity_lock_target: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_set_visual_size()
@@ -58,6 +59,7 @@ func _physics_process(delta: float) -> void:
 			jump_multiplier = aligned_jump_boost
 			jump_assist_target = jump_solution["target_center"] as Vector2
 			jump_assist_timer = jump_assist_duration
+			gravity_lock_target = jump_assist_target
 		velocity += jump_direction * jump_speed * jump_multiplier
 		grounded = false
 
@@ -66,6 +68,16 @@ func _physics_process(delta: float) -> void:
 	rotation = tangent.angle()
 
 func _select_gravity_target() -> void:
+	if gravity_lock_target != Vector2.ZERO:
+		for body in gravity_bodies:
+			if not body.has("center") or not body.has("radius"):
+				continue
+			if body["center"] == gravity_lock_target:
+				planet_center = body["center"]
+				planet_radius = body["radius"]
+				return
+		gravity_lock_target = Vector2.ZERO
+
 	var best_center = planet_center
 	var best_radius = planet_radius
 	var best_distance = INF
@@ -140,6 +152,7 @@ func _apply_surface_constraints() -> void:
 		if radial_velocity < 0.0:
 			velocity -= normal * radial_velocity
 		grounded = true
+		gravity_lock_target = Vector2.ZERO
 
 func _set_visual_size() -> void:
 	var polygon = $Polygon2D
