@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_hmp8p"]
+[ext_resource type="PackedScene" path="res://scenes/planet.tscn" id="1_hmp8p"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_5m64q"]
 [ext_resource type="Script" uid="uid://ca0uklmhcw5y" path="res://scripts/main.gd" id="3_e1xaa"]
 
