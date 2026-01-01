@@ -55,6 +55,7 @@ func _physics_process(delta: float) -> void:
 		var jump_solution = _get_jump_solution(direction_to_center)
 		var jump_direction = jump_solution["direction"] as Vector2
 		var jump_multiplier = 1.0
+		gravity_lock_target = Vector2.ZERO
 		if jump_solution["aligned"]:
 			jump_multiplier = aligned_jump_boost
 			jump_assist_target = jump_solution["target_center"] as Vector2
@@ -154,7 +155,7 @@ func _apply_surface_constraints() -> void:
 		if radial_velocity < 0.0:
 			velocity -= normal * radial_velocity
 		grounded = true
-		gravity_lock_target = Vector2.ZERO
+		gravity_lock_target = planet_center
 
 func _set_visual_size() -> void:
 	var polygon = $Polygon2D
