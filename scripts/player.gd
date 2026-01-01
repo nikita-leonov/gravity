@@ -103,7 +103,9 @@ func _select_gravity_target() -> void:
 
 func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	var jump_direction = -direction_to_center
+	var jump_reference = jump_direction
 	var best_dot = cos(max_target_angle)
+	var best_alignment = -1.0
 	var target_center = Vector2.ZERO
 	var has_target = false
 
@@ -117,19 +119,19 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 		if to_body.length() <= 0.0:
 			continue
 		var candidate_direction = to_body.normalized()
-		var alignment = candidate_direction.dot(jump_direction)
+		var alignment = candidate_direction.dot(jump_reference)
 		if alignment > best_dot:
 			best_dot = alignment
+			best_alignment = alignment
 			jump_direction = candidate_direction
 			target_center = center
 			has_target = true
 
 	var aligned = false
 	if has_target:
-		var from_planet = (global_position - planet_center).normalized()
-		var from_satellite = (global_position - target_center).normalized()
-		var alignment_score = from_planet.dot(from_satellite)
-		aligned = alignment_score >= cos(aligned_jump_angle)
+		if best_alignment < 0.0:
+			best_alignment = jump_direction.dot(jump_reference)
+		aligned = best_alignment >= cos(aligned_jump_angle)
 
 	return {
 		"direction": jump_direction,
