@@ -10,6 +10,7 @@ extends Node2D
 @export var aligned_jump_boost: float = 1.6
 @export var jump_assist_duration: float = 0.45
 @export var jump_assist_bias: float = 220.0
+@export var surface_snap_distance: float = 6.0
 
 var planet_center: Vector2 = Vector2.ZERO
 var planet_radius: float = 0.0
@@ -77,6 +78,15 @@ func _physics_process(delta: float) -> void:
 	last_gravity_id = current_gravity_id
 
 func _select_gravity_target() -> void:
+	if grounded and current_gravity_id != 0:
+		for body in gravity_bodies:
+			if not body.has("id") or not body.has("center") or not body.has("radius"):
+				continue
+			if body["id"] == current_gravity_id:
+				planet_center = body["center"]
+				planet_radius = body["radius"]
+				return
+
 	if gravity_lock_id != 0:
 		for body in gravity_bodies:
 			if not body.has("id") or not body.has("center") or not body.has("radius"):
@@ -163,12 +173,11 @@ func _apply_surface_constraints() -> void:
 		return
 
 	var normal = offset / distance
+	var radial_velocity = velocity.dot(normal)
 	grounded = false
-	if distance < desired_radius:
+	if distance <= desired_radius + surface_snap_distance and radial_velocity <= 0.0:
 		global_position = planet_center + normal * desired_radius
-		var radial_velocity = velocity.dot(normal)
-		if radial_velocity < 0.0:
-			velocity -= normal * radial_velocity
+		velocity -= normal * radial_velocity
 		grounded = true
 		gravity_lock_id = current_gravity_id
 
