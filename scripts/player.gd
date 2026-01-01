@@ -175,11 +175,14 @@ func _apply_surface_constraints() -> void:
 		return
 
 	var normal = offset / distance
-	var radial_velocity = velocity.dot(normal)
+	var body_velocity = last_body_velocity if grounded else Vector2.ZERO
+	var relative_velocity = velocity - body_velocity
+	var radial_velocity = relative_velocity.dot(normal)
 	grounded = false
 	if distance <= desired_radius + surface_snap_distance and radial_velocity <= 0.0:
 		global_position = planet_center + normal * desired_radius
-		velocity -= normal * radial_velocity
+		relative_velocity -= normal * radial_velocity
+		velocity = relative_velocity + body_velocity
 		grounded = true
 		gravity_lock_id = current_gravity_id
 
