@@ -93,13 +93,26 @@ func _spawn_satellites(center: Vector2, radius: float) -> void:
 	var max_size = max(satellite_radius_range.x, satellite_radius_range.y)
 	var min_speed = min(satellite_orbit_speed_range.x, satellite_orbit_speed_range.y)
 	var max_speed = max(satellite_orbit_speed_range.x, satellite_orbit_speed_range.y)
+	var jump_height = 0.0
+	if player != null and player.gravity_strength > 0.0:
+		jump_height = (player.jump_speed * player.jump_speed) / (2.0 * player.gravity_strength)
+	var min_surface_gap = jump_height * 1.5
+	var previous_orbit_radius = 0.0
+	var previous_size = 0.0
 
 	for i in range(count):
 		var satellite = satellite_scene.instantiate()
 		satellites.add_child(satellite)
 
-		var orbit_radius = radius + satellite_orbit_offset + float(i) * satellite_orbit_gap
 		var size = rng.randf_range(min_size, max_size)
+		var desired_orbit_radius = radius + satellite_orbit_offset + float(i) * satellite_orbit_gap
+		var orbit_radius = desired_orbit_radius
+		if i == 0:
+			var min_orbit_radius = radius + size + min_surface_gap
+			orbit_radius = max(orbit_radius, min_orbit_radius)
+		else:
+			var min_orbit_radius = previous_orbit_radius + previous_size + size + min_surface_gap
+			orbit_radius = max(orbit_radius, min_orbit_radius)
 		var angle = rng.randf_range(0.0, TAU)
 		var speed = rng.randf_range(min_speed, max_speed)
 		if rng.randf() < 0.5:
@@ -108,3 +121,6 @@ func _spawn_satellites(center: Vector2, radius: float) -> void:
 
 		if satellite.has_method("setup"):
 			satellite.call("setup", center, orbit_radius, angle, speed, size, is_primary)
+
+		previous_orbit_radius = orbit_radius
+		previous_size = size
