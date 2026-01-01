@@ -47,7 +47,7 @@ func _physics_process(delta: float) -> void:
 
 	var direction_to_center = (planet_center - global_position).normalized()
 	var tangent = Vector2(-direction_to_center.y, direction_to_center.x)
-	var input_axis = Input.get_axis("ui_right", "ui_left")
+	var input_axis = Input.get_axis("ui_left", "ui_right")
 
 	if input_axis != 0.0:
 		velocity += tangent * input_axis * move_accel * delta
@@ -88,6 +88,7 @@ func _select_gravity_target() -> void:
 				planet_center = body["center"]
 				planet_radius = body["radius"]
 				current_gravity_id = body["id"]
+				last_body_velocity = body.get("velocity", Vector2.ZERO)
 				gravity_lock_id = 0
 				return
 		gravity_lock_id = 0
@@ -100,6 +101,7 @@ func _select_gravity_target() -> void:
 			if body["id"] == current_gravity_id:
 				planet_center = body["center"]
 				planet_radius = body["radius"]
+				last_body_velocity = body.get("velocity", Vector2.ZERO)
 				found_current = true
 				break
 		if found_current:
@@ -115,6 +117,7 @@ func _select_gravity_target() -> void:
 	var best_radius = planet_radius
 	var best_distance = INF
 	var best_id = current_gravity_id
+	var best_velocity = Vector2.ZERO
 
 	for body in gravity_bodies:
 		if not body.has("id") or not body.has("center") or not body.has("radius"):
@@ -132,10 +135,12 @@ func _select_gravity_target() -> void:
 			best_center = center
 			best_radius = body_radius
 			best_id = body["id"]
+			best_velocity = body.get("velocity", Vector2.ZERO)
 
 	planet_center = best_center
 	planet_radius = best_radius
 	current_gravity_id = best_id
+	last_body_velocity = best_velocity
 
 func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	var jump_direction = -direction_to_center
