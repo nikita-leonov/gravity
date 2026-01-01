@@ -7,7 +7,7 @@ extends Node2D
 @export var satellite_count: int = 3
 @export var satellite_orbit_offset: float = 140.0
 @export var satellite_orbit_gap: float = 90.0
-@export var satellite_radius_range: Vector2 = Vector2(26.0, 46.0)
+@export var satellite_radius_range: Vector2 = Vector2(80.0, 140.0)
 @export var satellite_orbit_speed_range: Vector2 = Vector2(0.25, 0.85)
 
 @onready var planet = $Planet
