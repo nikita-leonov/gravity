@@ -18,7 +18,11 @@ var grounded := false
 var gravity_bodies: Array = []
 var jump_assist_target: Vector2 = Vector2.ZERO
 var jump_assist_timer: float = 0.0
-var gravity_lock_target: Vector2 = Vector2.ZERO
+var gravity_lock_id: int = 0
+var current_gravity_id: int = 0
+var last_gravity_id: int = 0
+var last_gravity_center: Vector2 = Vector2.ZERO
+var last_body_velocity: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_set_visual_size()
@@ -36,6 +40,8 @@ func _physics_process(delta: float) -> void:
 	_select_gravity_target()
 	if planet_radius <= 0.0:
 		return
+
+	_update_body_motion(delta)
 
 	var direction_to_center = (planet_center - global_position).normalized()
 	var tangent = Vector2(-direction_to_center.y, direction_to_center.x)
@@ -55,36 +61,40 @@ func _physics_process(delta: float) -> void:
 		var jump_solution = _get_jump_solution(direction_to_center)
 		var jump_direction = jump_solution["direction"] as Vector2
 		var jump_multiplier = 1.0
-		gravity_lock_target = Vector2.ZERO
+		gravity_lock_id = 0
 		if jump_solution["aligned"]:
 			jump_multiplier = aligned_jump_boost
 			jump_assist_target = jump_solution["target_center"] as Vector2
 			jump_assist_timer = jump_assist_duration
-			gravity_lock_target = jump_assist_target
+			gravity_lock_id = jump_solution["target_id"] as int
 		velocity += jump_direction * jump_speed * jump_multiplier
 		grounded = false
 
 	global_position += velocity * delta
 	_apply_surface_constraints()
 	rotation = tangent.angle()
+	last_gravity_center = planet_center
+	last_gravity_id = current_gravity_id
 
 func _select_gravity_target() -> void:
-	if gravity_lock_target != Vector2.ZERO:
+	if gravity_lock_id != 0:
 		for body in gravity_bodies:
-			if not body.has("center") or not body.has("radius"):
+			if not body.has("id") or not body.has("center") or not body.has("radius"):
 				continue
-			if body["center"] == gravity_lock_target:
+			if body["id"] == gravity_lock_id:
 				planet_center = body["center"]
 				planet_radius = body["radius"]
+				current_gravity_id = body["id"]
 				return
-		gravity_lock_target = Vector2.ZERO
+		gravity_lock_id = 0
 
 	var best_center = planet_center
 	var best_radius = planet_radius
 	var best_distance = INF
+	var best_id = current_gravity_id
 
 	for body in gravity_bodies:
-		if not body.has("center") or not body.has("radius"):
+		if not body.has("id") or not body.has("center") or not body.has("radius"):
 			continue
 		var center = body["center"]
 		var body_radius = body["radius"]
@@ -98,9 +108,11 @@ func _select_gravity_target() -> void:
 			best_distance = distance
 			best_center = center
 			best_radius = body_radius
+			best_id = body["id"]
 
 	planet_center = best_center
 	planet_radius = best_radius
+	current_gravity_id = best_id
 
 func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	var jump_direction = -direction_to_center
@@ -108,10 +120,11 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	var best_dot = cos(max_target_angle)
 	var best_alignment = -1.0
 	var target_center = Vector2.ZERO
+	var target_id = 0
 	var has_target = false
 
 	for body in gravity_bodies:
-		if not body.has("center") or not body.has("radius"):
+		if not body.has("id") or not body.has("center") or not body.has("radius"):
 			continue
 		var center = body["center"]
 		if center == planet_center:
@@ -126,6 +139,7 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 			best_alignment = alignment
 			jump_direction = candidate_direction
 			target_center = center
+			target_id = body["id"]
 			has_target = true
 
 	var aligned = false
@@ -137,7 +151,8 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	return {
 		"direction": jump_direction,
 		"aligned": aligned,
-		"target_center": target_center
+		"target_center": target_center,
+		"target_id": target_id
 	}
 
 func _apply_surface_constraints() -> void:
@@ -155,7 +170,22 @@ func _apply_surface_constraints() -> void:
 		if radial_velocity < 0.0:
 			velocity -= normal * radial_velocity
 		grounded = true
-		gravity_lock_target = planet_center
+		gravity_lock_id = current_gravity_id
+
+func _update_body_motion(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	if grounded and current_gravity_id == last_gravity_id and last_gravity_center != Vector2.ZERO:
+		var center_delta = planet_center - last_gravity_center
+		if center_delta != Vector2.ZERO:
+			var body_velocity = center_delta / delta
+			global_position += center_delta
+			velocity += body_velocity - last_body_velocity
+			last_body_velocity = body_velocity
+		else:
+			last_body_velocity = Vector2.ZERO
+	else:
+		last_body_velocity = Vector2.ZERO
 
 func _set_visual_size() -> void:
 	var polygon = $Polygon2D

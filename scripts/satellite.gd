@@ -35,6 +35,7 @@ func _draw() -> void:
 
 func get_body_data() -> Dictionary:
 	return {
+		"id": get_instance_id(),
 		"center": global_position,
 		"radius": radius
 	}
