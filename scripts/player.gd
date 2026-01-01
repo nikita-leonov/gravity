@@ -25,8 +25,8 @@ func _physics_process(delta: float) -> void:
 	if input_axis != 0.0:
 		velocity += tangent * input_axis * move_accel * delta
 		var tangential_speed = velocity.dot(tangent)
-		if absf(tangential_speed) > max_move_speed:
-			velocity -= tangent * (tangential_speed - signf(tangential_speed) * max_move_speed)
+		if abs(tangential_speed) > max_move_speed:
+			velocity -= tangent * (tangential_speed - sign(tangential_speed) * max_move_speed)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, move_accel * 0.6 * delta)
 
