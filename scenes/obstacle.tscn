@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/obstacle.gd" id="1_3mkgx"]
+
+[node name="Obstacle" type="Node2D"]
+	script = ExtResource("1_3mkgx")
+
+[node name="Polygon2D" type="Polygon2D" parent="."]
