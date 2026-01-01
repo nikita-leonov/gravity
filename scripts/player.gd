@@ -20,7 +20,7 @@ func _physics_process(delta: float) -> void:
 
 	var direction_to_center = (planet_center - global_position).normalized()
 	var tangent = Vector2(-direction_to_center.y, direction_to_center.x)
-	var input_axis = Input.get_axis("ui_left", "ui_right")
+	var input_axis = Input.get_axis("ui_right", "ui_left")
 
 	if input_axis != 0.0:
 		velocity += tangent * input_axis * move_accel * delta
