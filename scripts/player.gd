@@ -24,6 +24,7 @@ var current_gravity_id: int = 0
 var last_gravity_id: int = 0
 var last_gravity_center: Vector2 = Vector2.ZERO
 var last_body_velocity: Vector2 = Vector2.ZERO
+var jump_in_progress := false
 
 func _ready() -> void:
 	_set_visual_size()
@@ -70,6 +71,7 @@ func _physics_process(delta: float) -> void:
 			gravity_lock_id = jump_solution["target_id"] as int
 		velocity += jump_direction * jump_speed * jump_multiplier
 		grounded = false
+		jump_in_progress = true
 
 	global_position += velocity * delta
 	_apply_surface_constraints()
@@ -91,14 +93,23 @@ func _select_gravity_target() -> void:
 		gravity_lock_id = 0
 
 	if current_gravity_id != 0:
+		var found_current = false
 		for body in gravity_bodies:
 			if not body.has("id") or not body.has("center") or not body.has("radius"):
 				continue
 			if body["id"] == current_gravity_id:
 				planet_center = body["center"]
 				planet_radius = body["radius"]
+				found_current = true
+				break
+		if found_current:
+			if not jump_in_progress:
 				return
-		current_gravity_id = 0
+		else:
+			current_gravity_id = 0
+
+	if current_gravity_id != 0 and not jump_in_progress:
+		return
 
 	var best_center = planet_center
 	var best_radius = planet_radius
@@ -182,6 +193,7 @@ func _apply_surface_constraints() -> void:
 		velocity -= normal * radial_velocity
 		grounded = true
 		gravity_lock_id = current_gravity_id
+		jump_in_progress = false
 
 func _update_body_motion(delta: float) -> void:
 	if delta <= 0.0:
