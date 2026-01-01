@@ -78,15 +78,6 @@ func _physics_process(delta: float) -> void:
 	last_gravity_id = current_gravity_id
 
 func _select_gravity_target() -> void:
-	if grounded and current_gravity_id != 0:
-		for body in gravity_bodies:
-			if not body.has("id") or not body.has("center") or not body.has("radius"):
-				continue
-			if body["id"] == current_gravity_id:
-				planet_center = body["center"]
-				planet_radius = body["radius"]
-				return
-
 	if gravity_lock_id != 0:
 		for body in gravity_bodies:
 			if not body.has("id") or not body.has("center") or not body.has("radius"):
@@ -95,8 +86,19 @@ func _select_gravity_target() -> void:
 				planet_center = body["center"]
 				planet_radius = body["radius"]
 				current_gravity_id = body["id"]
+				gravity_lock_id = 0
 				return
 		gravity_lock_id = 0
+
+	if current_gravity_id != 0:
+		for body in gravity_bodies:
+			if not body.has("id") or not body.has("center") or not body.has("radius"):
+				continue
+			if body["id"] == current_gravity_id:
+				planet_center = body["center"]
+				planet_radius = body["radius"]
+				return
+		current_gravity_id = 0
 
 	var best_center = planet_center
 	var best_radius = planet_radius
