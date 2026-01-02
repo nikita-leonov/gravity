@@ -25,6 +25,7 @@ var last_gravity_id: int = 0
 var last_gravity_center: Vector2 = Vector2.ZERO
 var last_body_velocity: Vector2 = Vector2.ZERO
 var jump_in_progress := false
+var surface_lock := false
 
 func _ready() -> void:
 	_set_visual_size()
@@ -72,10 +73,13 @@ func _physics_process(delta: float) -> void:
 		velocity += jump_direction * jump_speed * jump_multiplier
 		grounded = false
 		jump_in_progress = true
+		surface_lock = false
 
 	global_position += velocity * delta
 	_apply_surface_constraints()
 	rotation = tangent.angle()
+	if grounded and not jump_in_progress:
+		surface_lock = true
 	last_gravity_center = gravity_center
 	last_gravity_id = current_gravity_id
 
@@ -92,6 +96,18 @@ func _select_gravity_target() -> void:
 				gravity_lock_id = 0
 				return
 		gravity_lock_id = 0
+
+	if surface_lock and current_gravity_id != 0:
+		for body in gravity_bodies:
+			if not body.has("id") or not body.has("center") or not body.has("radius"):
+				continue
+			if body["id"] == current_gravity_id:
+				gravity_center = body["center"]
+				gravity_radius = body["radius"]
+				last_body_velocity = body.get("velocity", Vector2.ZERO)
+				return
+		surface_lock = false
+		current_gravity_id = 0
 
 	if current_gravity_id != 0:
 		var found_current = false
