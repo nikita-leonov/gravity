@@ -12,8 +12,8 @@ extends Node2D
 @export var jump_assist_bias: float = 220.0
 @export var surface_snap_distance: float = 6.0
 
-var planet_center: Vector2 = Vector2.ZERO
-var planet_radius: float = 0.0
+var gravity_center: Vector2 = Vector2.ZERO
+var gravity_radius: float = 0.0
 var velocity: Vector2 = Vector2.ZERO
 var grounded := false
 var gravity_bodies: Array = []
@@ -40,12 +40,12 @@ func _physics_process(delta: float) -> void:
 		jump_assist_timer = max(jump_assist_timer - delta, 0.0)
 
 	_select_gravity_target()
-	if planet_radius <= 0.0:
+	if gravity_radius <= 0.0:
 		return
 
 	_update_body_motion(delta)
 
-	var direction_to_center = (planet_center - global_position).normalized()
+	var direction_to_center = (gravity_center - global_position).normalized()
 	var tangent = Vector2(-direction_to_center.y, direction_to_center.x)
 	var input_axis = Input.get_axis("ui_left", "ui_right")
 
@@ -76,7 +76,7 @@ func _physics_process(delta: float) -> void:
 	global_position += velocity * delta
 	_apply_surface_constraints()
 	rotation = tangent.angle()
-	last_gravity_center = planet_center
+	last_gravity_center = gravity_center
 	last_gravity_id = current_gravity_id
 
 func _select_gravity_target() -> void:
@@ -85,8 +85,8 @@ func _select_gravity_target() -> void:
 			if not body.has("id") or not body.has("center") or not body.has("radius"):
 				continue
 			if body["id"] == gravity_lock_id:
-				planet_center = body["center"]
-				planet_radius = body["radius"]
+				gravity_center = body["center"]
+				gravity_radius = body["radius"]
 				current_gravity_id = body["id"]
 				last_body_velocity = body.get("velocity", Vector2.ZERO)
 				gravity_lock_id = 0
@@ -99,8 +99,8 @@ func _select_gravity_target() -> void:
 			if not body.has("id") or not body.has("center") or not body.has("radius"):
 				continue
 			if body["id"] == current_gravity_id:
-				planet_center = body["center"]
-				planet_radius = body["radius"]
+				gravity_center = body["center"]
+				gravity_radius = body["radius"]
 				last_body_velocity = body.get("velocity", Vector2.ZERO)
 				found_current = true
 				break
@@ -113,8 +113,8 @@ func _select_gravity_target() -> void:
 	if current_gravity_id != 0 and not jump_in_progress:
 		return
 
-	var best_center = planet_center
-	var best_radius = planet_radius
+	var best_center = gravity_center
+	var best_radius = gravity_radius
 	var best_distance = INF
 	var best_id = current_gravity_id
 	var best_velocity = Vector2.ZERO
@@ -137,8 +137,8 @@ func _select_gravity_target() -> void:
 			best_id = body["id"]
 			best_velocity = body.get("velocity", Vector2.ZERO)
 
-	planet_center = best_center
-	planet_radius = best_radius
+	gravity_center = best_center
+	gravity_radius = best_radius
 	current_gravity_id = best_id
 	last_body_velocity = best_velocity
 
@@ -155,7 +155,7 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 		if not body.has("id") or not body.has("center") or not body.has("radius"):
 			continue
 		var center = body["center"]
-		if center == planet_center:
+		if center == gravity_center:
 			continue
 		var to_body = (center - global_position)
 		if to_body.length() <= 0.0:
@@ -184,8 +184,8 @@ func _get_jump_solution(direction_to_center: Vector2) -> Dictionary:
 	}
 
 func _apply_surface_constraints() -> void:
-	var desired_radius = planet_radius + radius
-	var offset = global_position - planet_center
+	var desired_radius = gravity_radius + radius
+	var offset = global_position - gravity_center
 	var distance = offset.length()
 	if distance <= 0.0:
 		return
@@ -196,7 +196,7 @@ func _apply_surface_constraints() -> void:
 	var radial_velocity = relative_velocity.dot(normal)
 	grounded = false
 	if distance <= desired_radius + surface_snap_distance and radial_velocity <= 0.0:
-		global_position = planet_center + normal * desired_radius
+		global_position = gravity_center + normal * desired_radius
 		relative_velocity -= normal * radial_velocity
 		velocity = relative_velocity + body_velocity
 		grounded = true
@@ -207,7 +207,7 @@ func _update_body_motion(delta: float) -> void:
 	if delta <= 0.0:
 		return
 	if grounded and current_gravity_id == last_gravity_id and last_gravity_center != Vector2.ZERO:
-		var center_delta = planet_center - last_gravity_center
+		var center_delta = gravity_center - last_gravity_center
 		if center_delta != Vector2.ZERO:
 			var body_velocity = center_delta / delta
 			global_position += center_delta
