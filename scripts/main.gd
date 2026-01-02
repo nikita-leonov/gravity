@@ -102,8 +102,10 @@ func _spawn_planets() -> void:
 	var min_speed = min(planet_orbit_speed_range.x, planet_orbit_speed_range.y)
 	var max_speed = max(planet_orbit_speed_range.x, planet_orbit_speed_range.y)
 	var min_surface_gap = _get_min_surface_gap()
+	var obstacle_buffer = _get_obstacle_buffer()
+	var max_satellite_extent = _get_max_satellite_extent()
 	var previous_orbit_radius = 0.0
-	var previous_size = 0.0
+	var previous_system_extent = 0.0
 
 	for i in range(count):
 		var planet = gravity_object_scene.instantiate()
@@ -111,13 +113,14 @@ func _spawn_planets() -> void:
 		planet.z_index = 1
 
 		var size = rng.randf_range(min_size, max_size)
+		var system_extent = max(size, max_satellite_extent)
 		var desired_orbit_radius = sun.radius + planet_orbit_offset + float(i) * planet_orbit_gap
 		var orbit_radius = desired_orbit_radius
 		if i == 0:
-			var min_orbit_radius = sun.radius + size + min_surface_gap
+			var min_orbit_radius = sun.radius + obstacle_buffer + system_extent + min_surface_gap
 			orbit_radius = max(orbit_radius, min_orbit_radius)
 		else:
-			var min_orbit_radius = previous_orbit_radius + previous_size + size + min_surface_gap
+			var min_orbit_radius = previous_orbit_radius + previous_system_extent + system_extent + min_surface_gap
 			orbit_radius = max(orbit_radius, min_orbit_radius)
 		var angle = rng.randf_range(0.0, TAU)
 		var speed = rng.randf_range(min_speed, max_speed)
@@ -129,7 +132,7 @@ func _spawn_planets() -> void:
 		_spawn_satellites_for_planet(planet, rng)
 
 		previous_orbit_radius = orbit_radius
-		previous_size = size
+		previous_system_extent = system_extent
 
 func _spawn_satellites_for_planet(planet: Node2D, rng: RandomNumberGenerator) -> void:
 	if gravity_objects == null:
@@ -174,3 +177,16 @@ func _get_min_surface_gap() -> float:
 	if player != null and player.gravity_strength > 0.0:
 		jump_height = (player.jump_speed * player.jump_speed) / (2.0 * player.gravity_strength)
 	return jump_height * 1.5
+
+func _get_obstacle_buffer() -> float:
+	var max_size = max(obstacle_size_range.x, obstacle_size_range.y)
+	return max_size
+
+func _get_max_satellite_extent() -> float:
+	var count = max(satellites_per_planet, 0)
+	if count == 0:
+		return 0.0
+	var max_satellite_size = max(satellite_radius_range.x, satellite_radius_range.y)
+	var gap = max(satellite_orbit_gap, 0.0)
+	var max_orbit_radius = satellite_orbit_offset + float(count - 1) * gap
+	return max_orbit_radius + max_satellite_size
