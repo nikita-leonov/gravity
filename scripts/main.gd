@@ -14,6 +14,12 @@ extends Node2D
 @export var satellite_orbit_gap: float = 90.0
 @export var satellite_radius_range: Vector2 = Vector2(36.0, 70.0)
 @export var satellite_orbit_speed_range: Vector2 = Vector2(0.4, 0.9)
+@export var satellite_nesting_levels: int = 1
+@export var satellites_per_satellite: int = 1
+@export var subsatellite_orbit_offset: float = 70.0
+@export var subsatellite_orbit_gap: float = 60.0
+@export var subsatellite_radius_scale: float = 0.6
+@export var subsatellite_orbit_speed_range: Vector2 = Vector2(0.6, 1.2)
 
 @onready var gravity_objects = $GravityObjects
 @onready var sun = $GravityObjects/Sun
@@ -169,6 +175,56 @@ func _spawn_satellites_for_planet(planet: Node2D, rng: RandomNumberGenerator) ->
 		if satellite.has_method("setup_orbit"):
 			satellite.call("setup_orbit", planet, orbit_radius, angle, speed, size)
 
+		_spawn_nested_satellites(satellite, rng, satellite_nesting_levels, 1)
+
+		previous_orbit_radius = orbit_radius
+		previous_size = size
+
+func _spawn_nested_satellites(parent: Node2D, rng: RandomNumberGenerator, depth: int, level: int) -> void:
+	if gravity_objects == null:
+		return
+	if depth <= 0:
+		return
+
+	var count = max(satellites_per_satellite, 0)
+	if count == 0:
+		return
+
+	var scale = pow(subsatellite_radius_scale, level)
+	var min_size = min(satellite_radius_range.x, satellite_radius_range.y) * scale
+	var max_size = max(satellite_radius_range.x, satellite_radius_range.y) * scale
+	var min_speed = min(subsatellite_orbit_speed_range.x, subsatellite_orbit_speed_range.y)
+	var max_speed = max(subsatellite_orbit_speed_range.x, subsatellite_orbit_speed_range.y)
+	var min_surface_gap = _get_min_surface_gap()
+	var orbit_offset = subsatellite_orbit_offset * scale
+	var orbit_gap = subsatellite_orbit_gap * scale
+	var previous_orbit_radius = 0.0
+	var previous_size = 0.0
+
+	for i in range(count):
+		var satellite = gravity_object_scene.instantiate()
+		gravity_objects.add_child(satellite)
+		satellite.z_index = 2 + level
+
+		var size = rng.randf_range(min_size, max_size)
+		var desired_orbit_radius = parent.radius + orbit_offset + float(i) * orbit_gap
+		var orbit_radius = desired_orbit_radius
+		if i == 0:
+			var min_orbit_radius = parent.radius + size + min_surface_gap
+			orbit_radius = max(orbit_radius, min_orbit_radius)
+		else:
+			var min_orbit_radius = previous_orbit_radius + previous_size + size + min_surface_gap
+			orbit_radius = max(orbit_radius, min_orbit_radius)
+		var angle = rng.randf_range(0.0, TAU)
+		var speed = rng.randf_range(min_speed, max_speed)
+		if rng.randf() < 0.5:
+			speed = -speed
+
+		if satellite.has_method("setup_orbit"):
+			satellite.call("setup_orbit", parent, orbit_radius, angle, speed, size)
+
+		_spawn_nested_satellites(satellite, rng, depth - 1, level + 1)
+
 		previous_orbit_radius = orbit_radius
 		previous_size = size
 
@@ -189,4 +245,13 @@ func _get_max_satellite_extent() -> float:
 	var max_satellite_size = max(satellite_radius_range.x, satellite_radius_range.y)
 	var gap = max(satellite_orbit_gap, 0.0)
 	var max_orbit_radius = satellite_orbit_offset + float(count - 1) * gap
-	return max_orbit_radius + max_satellite_size
+	var nested_extent = 0.0
+	if satellite_nesting_levels > 0 and satellites_per_satellite > 0:
+		for level in range(1, satellite_nesting_levels + 1):
+			var scale = pow(subsatellite_radius_scale, level)
+			var max_nested_size = max_satellite_size * scale
+			var nested_gap = max(subsatellite_orbit_gap, 0.0) * scale
+			var nested_offset = subsatellite_orbit_offset * scale
+			var max_nested_orbit = nested_offset + float(satellites_per_satellite - 1) * nested_gap
+			nested_extent += max_nested_orbit + max_nested_size
+	return max_orbit_radius + max_satellite_size + nested_extent

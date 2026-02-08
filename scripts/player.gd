@@ -11,6 +11,7 @@ extends Node2D
 @export var jump_assist_duration: float = 0.45
 @export var jump_assist_bias: float = 220.0
 @export var surface_snap_distance: float = 6.0
+@export var gravity_switch_threshold: float = 80.0
 
 var gravity_center: Vector2 = Vector2.ZERO
 var gravity_radius: float = 0.0
@@ -128,6 +129,10 @@ func _select_gravity_target() -> void:
 
 	if current_gravity_id != 0 and not jump_in_progress:
 		return
+	if jump_in_progress and current_gravity_id != 0:
+		var current_distance = (global_position - gravity_center).length()
+		if current_distance < gravity_radius + gravity_switch_threshold:
+			return
 
 	var best_center = gravity_center
 	var best_radius = gravity_radius
